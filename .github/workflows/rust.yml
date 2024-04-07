@@ -30,7 +30,7 @@ jobs:
           pass init gpg_key_for_pass
       - name: Trust gpg key
         run: |
-          echo "93DDA0D78578384B:6:" | gpg --import-ownertrust
+          echo "1A095DF58B4F3090DF90829DBFD1217E31DAFFCD:6:" | gpg --import-ownertrust
       - name: Test pass functionality
         run: |
           echo "Generating test key with pass"
