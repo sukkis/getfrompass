@@ -1,0 +1,16 @@
+[package]
+name = "getfrompass"
+version = "0.1.0"
+edition = "2021"
+authors = ["sukkis <rust.stuck095@passmail.net>"]
+description = "Get secret from Pass key-value store"
+license = "MIT OR Apache-2.0"
+keywords= ["password", "secret", "pass"]
+categories = ["authentication"]
+repository = "https://github.com/sukkis/getfrompass"
+readme = "README.md"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[dependencies]
