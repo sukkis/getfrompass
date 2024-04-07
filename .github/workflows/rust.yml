@@ -1,22 +1,45 @@
+---
 name: Rust
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pass gnupg
+      - name: Import GPG Key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode | gpg --import
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+      - name: Setup pass
+        run: |
+          pass init gpg_key_for_pass
+      - name: Trust gpg key
+        run: |
+          echo "1A095DF58B4F3090DF90829DBFD1217E31DAFFCD:6:" | gpg --import-ownertrust
+      - name: Test pass functionality
+        run: |
+          echo "Generating test key with pass"
+          pass generate -f test1 12
+          echo "List added keys"
+          pass
+          echo "Fetch generated key"
+          pass test1
+      - name: Build
+        run: cargo build --verbose
+      - name: Run tests
+        run: cargo test --lib --verbose
