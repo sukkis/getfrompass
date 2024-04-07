@@ -28,6 +28,14 @@ jobs:
       - name: Setup pass
         run: |
           pass init gpg_key_for_pass
+      - name: Test pass functionality
+        run: |
+          echo "Generating test key with pass"
+          pass generate -f test1 12
+          echo "List added keys"
+          pass
+          echo "Fetch generated key"
+          pass test1
       - name: Build
         run: cargo build --verbose
       - name: Run tests
