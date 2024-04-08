@@ -9,6 +9,7 @@ keywords= ["password", "secret", "pass"]
 categories = ["command-line-interface"]
 repository = "https://github.com/sukkis/getfrompass"
 readme = "README.md"
+include = ["src/*.rs"]
 
 [lints.rust]
 unsafe_code = "forbid"
