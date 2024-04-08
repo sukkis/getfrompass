@@ -19,6 +19,8 @@ e.g. `pass init my_gpg_key`
 ## Example
 
 ```
+use getfrompass::get_from_pass;
+
 fn main() {
     // Assuming Pass is available and has entry "test4"
     let my_pass = get_from_pass("test4");
