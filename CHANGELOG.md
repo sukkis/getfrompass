@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4](https://github.com/sukkis/getfrompass/compare/v0.1.3...v0.1.4) - 2024-04-18
+
+### Added
+- adding and removal of key-value pairs in Pass
+
+### Other
+- Merge pull request [#9](https://github.com/sukkis/getfrompass/pull/9) from sukkis/adding-and-removal
+- examples of addition and removal of Pass keys
+
 ## [0.1.3](https://github.com/sukkis/getfrompass/compare/v0.1.2...v0.1.3) - 2024-04-08
 
 ### Other
