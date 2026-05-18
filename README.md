@@ -1,6 +1,7 @@
 # getfrompass
 
 A thin wrapper around the [Pass](https://www.passwordstore.org/) password manager for Rust programs.
+Secrets returned by read functions are wrapped in [`Zeroizing`](https://docs.rs/zeroize) and zeroed from memory when dropped.
 
 ## Installation
 
@@ -31,6 +32,8 @@ fn main() {
     }
 }
 ```
+
+Returns `Option<Zeroizing<String>>`. `Zeroizing<String>` behaves like `String` in most contexts via `Deref`, so existing code rarely needs changes. If you need an explicit type annotation, add `zeroize` as a dependency (`cargo add zeroize`).
 
 If you'd rather panic on a missing key, `get_from_pass` does that.
 
