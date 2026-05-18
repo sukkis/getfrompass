@@ -1,16 +1,11 @@
-//! Getfrompass is a wrapper for Pass key-value store
-//!
-//! Provides a way to get passwords without
-//! having them in plain text on your computer.
-//! \[`getfrompass`\]: <https://github.com/sukkis/getfrompass>
+//! A thin wrapper around the [Pass](https://www.passwordstore.org/) password manager.
+//! Lets Rust programs read and write Pass entries without storing secrets in plain text.
 
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-/// Fetch secrets from key-value store Pass.
-/// This function does not panic.
-/// Returns None when key does not match.
-/// Prefer this function over get_from_pass().
+/// Fetch a secret from Pass. Returns `None` if the key doesn't exist.
+/// Prefer this over `get_from_pass`.
 pub fn try_get_from_pass(key: &str) -> Option<String> {
     let output = Command::new("pass").arg(key).output().ok()?;
 
@@ -22,11 +17,8 @@ pub fn try_get_from_pass(key: &str) -> Option<String> {
     Some(s.trim().to_string())
 }
 
-/// Fetch secrets from key-value store Pass.
-/// This code runs cli command "pass apikey" to get the value of the key.
-/// Panics and terminates on not receiving proper key.
-/// Legacy function maintained for backwards compatibility.
-/// Consider using try_get_from_pass() instead.
+/// Fetch a secret from Pass. Panics if the key doesn't exist.
+/// Consider using `try_get_from_pass` instead.
 pub fn get_from_pass(arg: &str) -> String {
     let output = Command::new("pass")
         .arg(arg)
@@ -41,9 +33,8 @@ pub fn get_from_pass(arg: &str) -> String {
     key
 }
 
-/// Store a known string value in Pass under `key`. Returns `true` if the
-/// value was stored, `false` if an entry already existed (no overwrite).
-/// Use `force_store_in_pass` when intentional overwriting is required.
+/// Store a value in Pass. Returns `true` if stored, `false` if the key already exists.
+/// Use `force_store_in_pass` to overwrite an existing entry.
 pub fn store_in_pass(key: &str, value: &str) -> bool {
     if try_get_from_pass(key).is_some() {
         return false;
@@ -67,9 +58,8 @@ pub fn store_in_pass(key: &str, value: &str) -> bool {
     true
 }
 
-/// Store a known string value in Pass under `key`, overwriting any existing
-/// entry. Use only when replacing a value is intentional (e.g. refreshing a
-/// cached API token). For first-time writes, prefer `store_in_pass`.
+/// Store a value in Pass, overwriting any existing entry.
+/// Prefer `store_in_pass` for first-time writes.
 pub fn force_store_in_pass(key: &str, value: &str) {
     let mut child = Command::new("pass")
         .arg("insert")
@@ -90,8 +80,7 @@ pub fn force_store_in_pass(key: &str, value: &str) {
     child.wait().expect("Failed to wait for 'pass' command");
 }
 
-/// Generate a key-value pair to Pass.
-/// Password is randomly generated.
+/// Saves a randomly generated password for a given key
 pub fn insert_to_pass(key: &str, len: u32) -> String {
     let command = Command::new("pass")
         .arg("generate")
@@ -110,8 +99,6 @@ pub fn insert_to_pass(key: &str, len: u32) -> String {
 }
 
 /// Remove key-value pair from Pass.
-/// Not recommended for production use.
-/// This command uses Pass with "-f" switch.
 pub fn remove_from_pass(key: &str) {
     Command::new("pass")
         .arg("rm")
