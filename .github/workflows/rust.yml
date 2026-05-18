@@ -27,11 +27,11 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
       - name: Trust gpg key
         run: |
-          echo "1A095DF58B4F3090DF90829DBFD1217E31DAFFCD:6:" | gpg --import-ownertrust
+          echo "510CC808500A036BAD375E5F3362F482D4DCE24C:6:" | gpg --import-ownertrust
           gpgconf --kill gpg-agent
       - name: Setup pass
         run: |
-          pass init 1A095DF58B4F3090DF90829DBFD1217E31DAFFCD
+          pass init 510CC808500A036BAD375E5F3362F482D4DCE24C
       - name: Test pass functionality
         run: |
           echo "Generating test key with pass"
