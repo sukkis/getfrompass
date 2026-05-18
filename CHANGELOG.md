@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/sukkis/getfrompass/compare/v0.1.4...v0.2.0) - 2026-05-18
+
+### Added
+
+- add memory zeroing using zeroize library
+- add functions so for example API token caching and overwriting is easier.
+
+### Fixed
+
+- sanitize key adding
+- update documentation
+
+### Other
+
+- api has changed, so bump
+- release v0.1.5
+- addition to function documentation
+
 ## [0.1.5](https://github.com/sukkis/getfrompass/compare/v0.1.4...v0.1.5) - 2026-05-18
 
 ### Added
