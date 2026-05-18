@@ -25,12 +25,13 @@ jobs:
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode | gpg --import
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-      - name: Setup pass
-        run: |
-          pass init 1A095DF58B4F3090DF90829DBFD1217E31DAFFCD
       - name: Trust gpg key
         run: |
           echo "1A095DF58B4F3090DF90829DBFD1217E31DAFFCD:6:" | gpg --import-ownertrust
+          gpgconf --kill gpg-agent
+      - name: Setup pass
+        run: |
+          pass init 1A095DF58B4F3090DF90829DBFD1217E31DAFFCD
       - name: Test pass functionality
         run: |
           echo "Generating test key with pass"
