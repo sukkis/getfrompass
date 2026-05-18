@@ -15,3 +15,4 @@ include = ["src/*.rs"]
 unsafe_code = "forbid"
 
 [dependencies]
+zeroize = "=1.8.2"

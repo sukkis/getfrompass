@@ -3,34 +3,39 @@
 
 use std::io::Write;
 use std::process::{Command, Stdio};
+use zeroize::{Zeroize, Zeroizing};
 
 /// Fetch a secret from Pass. Returns `None` if the key doesn't exist.
 /// Prefer this over `get_from_pass`.
-pub fn try_get_from_pass(key: &str) -> Option<String> {
-    let output = Command::new("pass").arg("--").arg(key).output().ok()?;
-
+pub fn try_get_from_pass(key: &str) -> Option<Zeroizing<String>> {
+    let mut output = Command::new("pass").arg("--").arg(key).output().ok()?;
     if !output.status.success() {
+        output.stdout.zeroize();
         return None;
     }
-
-    let s = std::str::from_utf8(&output.stdout).ok()?;
-    Some(s.trim().to_string())
+    let result = std::str::from_utf8(&output.stdout)
+        .ok()
+        .map(|s| Zeroizing::new(s.trim().to_string()));
+    output.stdout.zeroize();
+    result
 }
 
 /// Fetch a secret from Pass. Panics if the key doesn't exist.
 /// Consider using `try_get_from_pass` instead.
-pub fn get_from_pass(arg: &str) -> String {
-    let output = Command::new("pass")
+pub fn get_from_pass(arg: &str) -> Zeroizing<String> {
+    let mut output = Command::new("pass")
         .arg("--")
         .arg(arg)
         .output()
         .expect("Failed to execute 'pass' command");
 
-    let key = std::str::from_utf8(&output.stdout)
-        .expect("Output from 'pass' command is not valid UTF-8")
-        .trim()
-        .to_string();
-
+    let key = Zeroizing::new(
+        std::str::from_utf8(&output.stdout)
+            .expect("Output from 'pass' command is not valid UTF-8")
+            .trim()
+            .to_string(),
+    );
+    output.stdout.zeroize();
     key
 }
 
@@ -85,8 +90,8 @@ pub fn force_store_in_pass(key: &str, value: &str) {
 }
 
 /// Saves a randomly generated password for a given key
-pub fn insert_to_pass(key: &str, len: u32) -> String {
-    let command = Command::new("pass")
+pub fn insert_to_pass(key: &str, len: u32) -> Zeroizing<String> {
+    let mut command = Command::new("pass")
         .arg("generate")
         .arg("-f")
         .arg("--no-symbols")
@@ -96,10 +101,13 @@ pub fn insert_to_pass(key: &str, len: u32) -> String {
         .output()
         .expect("Failed to run 'pass' command");
 
-    let output = std::str::from_utf8(&command.stdout)
-        .expect("Output from 'pass' command is not valid UTF-8")
-        .trim()
-        .to_string();
+    let output = Zeroizing::new(
+        std::str::from_utf8(&command.stdout)
+            .expect("Output from 'pass' command is not valid UTF-8")
+            .trim()
+            .to_string(),
+    );
+    command.stdout.zeroize();
     output
 }
 
@@ -199,7 +207,7 @@ mod tests {
         force_store_in_pass(test_key, test_value);
 
         let result = try_get_from_pass(test_key);
-        assert_eq!(result, Some(test_value.to_string()));
+        assert_eq!(result.as_ref().map(|s| s.as_str()), Some(test_value));
 
         Command::new("pass")
             .arg("rm")
@@ -217,7 +225,7 @@ mod tests {
         force_store_in_pass(test_key, "second_value");
 
         let result = try_get_from_pass(test_key);
-        assert_eq!(result, Some("second_value".to_string()));
+        assert_eq!(result.as_ref().map(|s| s.as_str()), Some("second_value"));
 
         Command::new("pass")
             .arg("rm")
@@ -234,7 +242,10 @@ mod tests {
         let stored = store_in_pass(test_key, "my_token");
 
         assert!(stored);
-        assert_eq!(try_get_from_pass(test_key), Some("my_token".to_string()));
+        assert_eq!(
+            try_get_from_pass(test_key).as_ref().map(|s| s.as_str()),
+            Some("my_token")
+        );
 
         Command::new("pass")
             .arg("rm")
@@ -252,7 +263,10 @@ mod tests {
         let stored = store_in_pass(test_key, "should_not_overwrite");
 
         assert!(!stored);
-        assert_eq!(try_get_from_pass(test_key), Some("original".to_string()));
+        assert_eq!(
+            try_get_from_pass(test_key).as_ref().map(|s| s.as_str()),
+            Some("original")
+        );
 
         Command::new("pass")
             .arg("rm")
@@ -274,8 +288,8 @@ mod tests {
         let test_key = "--getfrompass-store-flag";
         store_in_pass(test_key, "flag_test_value");
         assert_eq!(
-            try_get_from_pass(test_key),
-            Some("flag_test_value".to_string())
+            try_get_from_pass(test_key).as_ref().map(|s| s.as_str()),
+            Some("flag_test_value")
         );
         Command::new("pass")
             .arg("rm")
@@ -290,8 +304,8 @@ mod tests {
         let test_key = "--getfrompass-force-flag";
         force_store_in_pass(test_key, "flag_force_value");
         assert_eq!(
-            try_get_from_pass(test_key),
-            Some("flag_force_value".to_string())
+            try_get_from_pass(test_key).as_ref().map(|s| s.as_str()),
+            Some("flag_force_value")
         );
         Command::new("pass")
             .arg("rm")
