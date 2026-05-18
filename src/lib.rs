@@ -36,6 +36,7 @@ pub fn get_from_pass(arg: &str) -> String {
 
 /// Store a value in Pass. Returns `true` if stored, `false` if the key already exists.
 /// Use `force_store_in_pass` to overwrite an existing entry.
+/// Note: the existence check and write are not atomic.
 pub fn store_in_pass(key: &str, value: &str) -> bool {
     if try_get_from_pass(key).is_some() {
         return false;
