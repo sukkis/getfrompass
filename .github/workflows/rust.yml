@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -27,7 +27,7 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
       - name: Setup pass
         run: |
-          pass init gpg_key_for_pass
+          pass init 1A095DF58B4F3090DF90829DBFD1217E31DAFFCD
       - name: Trust gpg key
         run: |
           echo "1A095DF58B4F3090DF90829DBFD1217E31DAFFCD:6:" | gpg --import-ownertrust
