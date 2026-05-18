@@ -4,11 +4,29 @@
 //! having them in plain text on your computer.
 //! \[`getfrompass`\]: <https://github.com/sukkis/getfrompass>
 
-use std::process::Command;
+use std::io::Write;
+use std::process::{Command, Stdio};
 
-/// Use this to fetch secrets from key-value store Pass.
+/// Fetch secrets from key-value store Pass.
+/// This function does not panic.
+/// Returns None when key does not match.
+/// Prefer this function over get_from_pass().
+pub fn try_get_from_pass(key: &str) -> Option<String> {
+    let output = Command::new("pass").arg(key).output().ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let s = std::str::from_utf8(&output.stdout).ok()?;
+    Some(s.trim().to_string())
+}
+
+/// Fetch secrets from key-value store Pass.
 /// This code runs cli command "pass apikey" to get the value of the key.
 /// Panics and terminates on not receiving proper key.
+/// Legacy function maintained for backwards compatibility.
+/// Consider using try_get_from_pass() instead.
 pub fn get_from_pass(arg: &str) -> String {
     let output = Command::new("pass")
         .arg(arg)
@@ -23,7 +41,57 @@ pub fn get_from_pass(arg: &str) -> String {
     key
 }
 
+/// Store a known string value in Pass under `key`. Returns `true` if the
+/// value was stored, `false` if an entry already existed (no overwrite).
+/// Use `force_store_in_pass` when intentional overwriting is required.
+pub fn store_in_pass(key: &str, value: &str) -> bool {
+    if try_get_from_pass(key).is_some() {
+        return false;
+    }
+    let mut child = Command::new("pass")
+        .arg("insert")
+        .arg("--echo")
+        .arg(key)
+        .stdin(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn 'pass' command");
+
+    child
+        .stdin
+        .take()
+        .expect("Failed to open stdin")
+        .write_all(value.as_bytes())
+        .expect("Failed to write to 'pass' stdin");
+
+    child.wait().expect("Failed to wait for 'pass' command");
+    true
+}
+
+/// Store a known string value in Pass under `key`, overwriting any existing
+/// entry. Use only when replacing a value is intentional (e.g. refreshing a
+/// cached API token). For first-time writes, prefer `store_in_pass`.
+pub fn force_store_in_pass(key: &str, value: &str) {
+    let mut child = Command::new("pass")
+        .arg("insert")
+        .arg("--echo")
+        .arg("--force")
+        .arg(key)
+        .stdin(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn 'pass' command");
+
+    child
+        .stdin
+        .take()
+        .expect("Failed to open stdin")
+        .write_all(value.as_bytes())
+        .expect("Failed to write to 'pass' stdin");
+
+    child.wait().expect("Failed to wait for 'pass' command");
+}
+
 /// Generate a key-value pair to Pass.
+/// Password is randomly generated.
 pub fn insert_to_pass(key: &str, len: u32) -> String {
     let command = Command::new("pass")
         .arg("generate")
@@ -76,6 +144,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_try_get_existing_key_returns_some() {
+        let test_key = "try_get_test_content_42";
+        insert_to_pass(test_key, 8);
+        let result = try_get_from_pass(test_key);
+        assert_eq!(result.unwrap().len(), 8);
+        Command::new("pass")
+            .arg("rm")
+            .arg("-f")
+            .arg(test_key)
+            .output()
+            .expect("cleanup failed");
+    }
+
+    #[test]
+    fn test_try_get_missing_key_returns_none() {
+        let result = try_get_from_pass("try_get_test_nonexistent_key_42");
+        assert_eq!(result, None);
+    }
+
+    #[test]
     fn test_get_password() {
         _insert_test_pass();
         let testpass = get_from_pass("test_pass_667667667667");
@@ -108,6 +196,77 @@ mod tests {
             .arg(test_key)
             .output()
             .expect("Failed to remove test key from 'pass'");
+    }
+
+    #[test]
+    fn test_force_store_in_pass_value_is_retrievable() {
+        let test_key = "store_in_pass_test_retrieve_42";
+        let test_value = "super_secret_token_abc123";
+
+        force_store_in_pass(test_key, test_value);
+
+        let result = try_get_from_pass(test_key);
+        assert_eq!(result, Some(test_value.to_string()));
+
+        Command::new("pass")
+            .arg("rm")
+            .arg("-f")
+            .arg(test_key)
+            .output()
+            .expect("cleanup failed");
+    }
+
+    #[test]
+    fn test_force_store_in_pass_overwrites_existing() {
+        let test_key = "store_in_pass_test_overwrite_42";
+
+        force_store_in_pass(test_key, "first_value");
+        force_store_in_pass(test_key, "second_value");
+
+        let result = try_get_from_pass(test_key);
+        assert_eq!(result, Some("second_value".to_string()));
+
+        Command::new("pass")
+            .arg("rm")
+            .arg("-f")
+            .arg(test_key)
+            .output()
+            .expect("cleanup failed");
+    }
+
+    #[test]
+    fn test_store_in_pass_returns_true_and_stores_value() {
+        let test_key = "store_in_pass_new_key_42";
+
+        let stored = store_in_pass(test_key, "my_token");
+
+        assert!(stored);
+        assert_eq!(try_get_from_pass(test_key), Some("my_token".to_string()));
+
+        Command::new("pass")
+            .arg("rm")
+            .arg("-f")
+            .arg(test_key)
+            .output()
+            .expect("cleanup failed");
+    }
+
+    #[test]
+    fn test_store_in_pass_returns_false_if_key_exists() {
+        let test_key = "store_in_pass_existing_key_42";
+        force_store_in_pass(test_key, "original");
+
+        let stored = store_in_pass(test_key, "should_not_overwrite");
+
+        assert!(!stored);
+        assert_eq!(try_get_from_pass(test_key), Some("original".to_string()));
+
+        Command::new("pass")
+            .arg("rm")
+            .arg("-f")
+            .arg(test_key)
+            .output()
+            .expect("cleanup failed");
     }
 
     #[test]
