@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 /// Fetch a secret from Pass. Returns `None` if the key doesn't exist.
 /// Prefer this over `get_from_pass`.
 pub fn try_get_from_pass(key: &str) -> Option<String> {
-    let output = Command::new("pass").arg(key).output().ok()?;
+    let output = Command::new("pass").arg("--").arg(key).output().ok()?;
 
     if !output.status.success() {
         return None;
@@ -21,6 +21,7 @@ pub fn try_get_from_pass(key: &str) -> Option<String> {
 /// Consider using `try_get_from_pass` instead.
 pub fn get_from_pass(arg: &str) -> String {
     let output = Command::new("pass")
+        .arg("--")
         .arg(arg)
         .output()
         .expect("Failed to execute 'pass' command");
@@ -42,6 +43,7 @@ pub fn store_in_pass(key: &str, value: &str) -> bool {
     let mut child = Command::new("pass")
         .arg("insert")
         .arg("--echo")
+        .arg("--")
         .arg(key)
         .stdin(Stdio::piped())
         .spawn()
@@ -65,6 +67,7 @@ pub fn force_store_in_pass(key: &str, value: &str) {
         .arg("insert")
         .arg("--echo")
         .arg("--force")
+        .arg("--")
         .arg(key)
         .stdin(Stdio::piped())
         .spawn()
@@ -86,6 +89,7 @@ pub fn insert_to_pass(key: &str, len: u32) -> String {
         .arg("generate")
         .arg("-f")
         .arg("--no-symbols")
+        .arg("--")
         .arg(key)
         .arg(len.to_string())
         .output()
@@ -103,6 +107,7 @@ pub fn remove_from_pass(key: &str) {
     Command::new("pass")
         .arg("rm")
         .arg("-f")
+        .arg("--")
         .arg(key)
         .output()
         .expect("Failed to remove key from 'pass'");
@@ -254,6 +259,89 @@ mod tests {
             .arg(test_key)
             .output()
             .expect("cleanup failed");
+    }
+
+    // `pass --version` exits 0 and outputs text, so without a `--` separator
+    // try_get_from_pass("--version") would return Some(version_string) instead of None.
+    #[test]
+    fn test_try_get_flag_like_key_returns_none() {
+        assert_eq!(try_get_from_pass("--version"), None);
+    }
+
+    #[test]
+    fn test_store_in_pass_flag_like_key() {
+        let test_key = "--getfrompass-store-flag";
+        store_in_pass(test_key, "flag_test_value");
+        assert_eq!(
+            try_get_from_pass(test_key),
+            Some("flag_test_value".to_string())
+        );
+        Command::new("pass")
+            .arg("rm")
+            .arg("-f")
+            .arg(test_key)
+            .output()
+            .expect("cleanup failed");
+    }
+
+    #[test]
+    fn test_force_store_in_pass_flag_like_key() {
+        let test_key = "--getfrompass-force-flag";
+        force_store_in_pass(test_key, "flag_force_value");
+        assert_eq!(
+            try_get_from_pass(test_key),
+            Some("flag_force_value".to_string())
+        );
+        Command::new("pass")
+            .arg("rm")
+            .arg("-f")
+            .arg(test_key)
+            .output()
+            .expect("cleanup failed");
+    }
+
+    #[test]
+    fn test_insert_to_pass_flag_like_key() {
+        let test_key = "--getfrompass-insert-flag";
+        insert_to_pass(test_key, 8);
+        assert_eq!(try_get_from_pass(test_key).unwrap().len(), 8);
+        Command::new("pass")
+            .arg("rm")
+            .arg("-f")
+            .arg(test_key)
+            .output()
+            .expect("cleanup failed");
+    }
+
+    #[test]
+    fn test_remove_from_pass_flag_like_key() {
+        let test_key = "--getfrompass-remove-flag";
+        // Store directly with -- so the key exists regardless of the library bug
+        let mut child = Command::new("pass")
+            .arg("insert")
+            .arg("--echo")
+            .arg("--force")
+            .arg("--")
+            .arg(test_key)
+            .stdin(Stdio::piped())
+            .spawn()
+            .expect("setup failed");
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(b"to_be_removed")
+            .unwrap();
+        child.wait().expect("setup failed");
+
+        remove_from_pass(test_key);
+
+        let output = Command::new("pass")
+            .arg("--")
+            .arg(test_key)
+            .output()
+            .unwrap();
+        assert!(!output.status.success(), "key should have been removed");
     }
 
     #[test]
